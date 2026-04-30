@@ -1,0 +1,23 @@
+README.md
+  bd0337c0160c06da 1-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "b41f94754a99be04a45a6365e736b71e12ab4a5f",
+  "prompts": {
+    "bd0337c0160c06da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "05b6fcba-8d69-4c31-9bd8-d3dfbec489a1",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Gonzalo Richiardi",
+      "messages": [],
+      "total_additions": 100,
+      "total_deletions": 0,
+      "accepted_lines": 100,
+      "overriden_lines": 0
+    }
+  }
+}
