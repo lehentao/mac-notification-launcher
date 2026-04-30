@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-import sqlite3, sys, os
+# Recibe: IDs separados por | y threshold en minutos
+# Devuelve: outputs por chico separados por ~ (STATUS|count|name o NONE)
+import sqlite3, sys, os, time
 
 DB = os.path.expanduser("~/Library/Application Support/BeeperTexts/index.db")
 
-# IDs recibidos como argumentos, o valores por defecto
-KIDS = sys.argv[1:] if len(sys.argv) > 1 else [
-    "@googlechat_107397459185633289427:beeper.local",
-    "@googlechat_107972309718912565724:beeper.local",
-]
+if len(sys.argv) < 2:
+    print("NONE"); sys.exit()
+
+KIDS  = sys.argv[1].split("|")
+THRESHOLD = int(sys.argv[2]) if len(sys.argv) > 2 else 5
 
 def check_kid(conn, kid_id):
     rows = conn.execute("""
@@ -23,19 +25,30 @@ def check_kid(conn, kid_id):
         LIMIT 1
     """, (kid_id,)).fetchall()
     if not rows:
-        return "NONE"
+        return None
     name, count = rows[0]
-    return f"MSG|{count}|{name or 'Chico'}"
+    return name or "Chico", count
 
-def main():
+def process(kid_id, idx):
+    flag = f"/tmp/kid{idx}_timer"
     try:
         conn = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
+        result = check_kid(conn, kid_id)
+        conn.close()
     except Exception:
-        print("NONE##NONE"); return
+        return "NONE"
 
-    results = [check_kid(conn, kid) for kid in KIDS]
-    conn.close()
-    print("##".join(results))
+    if result is None:
+        if os.path.exists(flag):
+            os.remove(flag)
+        return "NONE"
 
-if __name__ == "__main__":
-    main()
+    name, count = result
+    if not os.path.exists(flag):
+        open(flag, 'w').close()
+    elapsed = int((time.time() - os.path.getmtime(flag)) / 60)
+    status = "CRITICAL" if elapsed >= THRESHOLD else "PENDING"
+    return f"{status}|{count}|{name}"
+
+results = [process(kid, i) for i, kid in enumerate(KIDS)]
+print("~".join(results))

@@ -11,90 +11,96 @@ FLAG_GCHAT="/tmp/gchat_timer"
 FLAG_BREAK="/tmp/break_timer"
 
 # 1. SENSOR DE REUNIÓN (vía icalBuddy + EventKit)
-if pmset -g assertions | grep -i "Google Chrome" | grep -i "WebRTC" > /dev/null; then
-    MEET_OUT="ALIVE"
+if [ "$SENSOR_MEET" = "true" ]; then
+    if pmset -g assertions | grep -i "Google Chrome" | grep -i "WebRTC" > /dev/null; then
+        MEET_OUT="ALIVE"
+    else
+        MEET_OUT=$(timeout 8 /opt/homebrew/bin/icalBuddy -eep "notes,attendees,location,url" -ea -nc -b ">>>" -ec "$CAL_EXCLUDE" eventsFrom:today to:tomorrow 2>/dev/null | timeout 4 python3 "$WIDGET/check_calendar.py" 2>/dev/null || echo "NONE")
+        [ -z "$MEET_OUT" ] && MEET_OUT="NONE"
+    fi
 else
-    MEET_OUT=$(timeout 8 /opt/homebrew/bin/icalBuddy -eep "notes,attendees,location,url" -ea -nc -b ">>>" -ec "$CAL_EXCLUDE" eventsFrom:today to:tomorrow 2>/dev/null | timeout 4 python3 "$WIDGET/check_calendar.py" 2>/dev/null || echo "NONE")
-    [ -z "$MEET_OUT" ] && MEET_OUT="NONE"
+    MEET_OUT="NONE"
 fi
 
 # 2. SENSOR DE CHICOS (Beeper - Google Chat personal)
-KIDS_RAW=$(python3 "$WIDGET/check_kids.py" "$KID1_ID" "$KID2_ID" 2>/dev/null || echo "NONE##NONE")
-KID1_RAW=$(echo "$KIDS_RAW" | cut -d'#' -f1)
-KID2_RAW=$(echo "$KIDS_RAW" | cut -d'#' -f3)
-
-process_kid() {
-    local RAW=$1 FLAG=$2
-    if [ "$RAW" != "NONE" ]; then
-        if [ ! -f "$FLAG" ]; then touch "$FLAG"; fi
-        local MINS=$(( ($(date +%s) - $(stat -f %m "$FLAG")) / 60 ))
-        local NAME=$(echo "$RAW" | cut -d'|' -f3)
-        local COUNT=$(echo "$RAW" | cut -d'|' -f2)
-        if [ "$MINS" -ge "$KIDS_THRESHOLD" ]; then echo "CRITICAL|$COUNT|$NAME"; else echo "PENDING|$COUNT|$NAME"; fi
-    else
-        rm -f "$FLAG"
-        echo "NONE"
-    fi
-}
-
-KID1_OUT=$(process_kid "$KID1_RAW" "/tmp/kid1_timer")
-KID2_OUT=$(process_kid "$KID2_RAW" "/tmp/kid2_timer")
+if [ "$SENSOR_KIDS" = "true" ] && [ -n "$KIDS_IDS" ]; then
+    KIDS_OUT=$(python3 "$WIDGET/check_kids.py" "$KIDS_IDS" "$KIDS_THRESHOLD" 2>/dev/null || echo "NONE")
+else
+    KIDS_OUT="NONE"
+fi
 
 # 3. SENSOR DE WHATSAPP (solo mensajes de esposa, vía DB nativa)
-WA_DB="$HOME/Library/Group Containers/group.net.whatsapp.WhatsApp.shared/ChatStorage.sqlite"
-WA_COUNT=$(sqlite3 "$WA_DB" "SELECT COALESCE(SUM(ZUNREADCOUNT),0) FROM ZWACHATSESSION WHERE ZCONTACTJID='$WA_CONTACT';" 2>/dev/null || echo "0")
-[ -z "$WA_COUNT" ] && WA_COUNT=0
-if [ "$WA_COUNT" -gt 0 ]; then
-    if [ ! -f "$FLAG_WA" ]; then touch "$FLAG_WA"; fi
-    WA_MINS=$(( ($(date +%s) - $(stat -f %m "$FLAG_WA")) / 60 ))
-    if [ "$WA_MINS" -ge "$WA_THRESHOLD" ]; then WA_OUT="CRITICAL|$WA_COUNT"; else WA_OUT="PENDING|$WA_COUNT"; fi
+if [ "$SENSOR_WHATSAPP" = "true" ] && [ -n "$WA_CONTACTS" ]; then
+    WA_DB="$HOME/Library/Group Containers/group.net.whatsapp.WhatsApp.shared/ChatStorage.sqlite"
+    WA_JIDS=$(echo "$WA_CONTACTS" | tr '|' '\n' | sed "s/.*/'&'/" | tr '\n' ',' | sed 's/,$//')
+    WA_COUNT=$(sqlite3 "$WA_DB" "SELECT COALESCE(SUM(ZUNREADCOUNT),0) FROM ZWACHATSESSION WHERE ZCONTACTJID IN ($WA_JIDS);" 2>/dev/null || echo "0")
+    [ -z "$WA_COUNT" ] && WA_COUNT=0
+    if [ "$WA_COUNT" -gt 0 ]; then
+        if [ ! -f "$FLAG_WA" ]; then touch "$FLAG_WA"; fi
+        WA_MINS=$(( ($(date +%s) - $(stat -f %m "$FLAG_WA")) / 60 ))
+        if [ "$WA_MINS" -ge "$WA_THRESHOLD" ]; then WA_OUT="CRITICAL|$WA_COUNT"; else WA_OUT="PENDING|$WA_COUNT"; fi
+    else
+        rm -f "$FLAG_WA"
+        WA_OUT="NONE"
+    fi
 else
-    rm -f "$FLAG_WA"
     WA_OUT="NONE"
 fi
 
 # 4. SENSOR DE GOOGLE CHAT
-GCHAT_PID=$(lsappinfo find name="Google Chat" 2>/dev/null)
-if [ -z "$GCHAT_PID" ]; then
-    GCHAT_COUNT=0
+if [ "$SENSOR_GCHAT" = "true" ]; then
+    GCHAT_PID=$(lsappinfo find name="Google Chat" 2>/dev/null)
+    if [ -z "$GCHAT_PID" ]; then
+        GCHAT_COUNT=0
+    else
+        GCHAT_COUNT=$(lsappinfo info -only StatusLabel "$GCHAT_PID" | grep -oE '[0-9]+' || echo "0")
+    fi
+    if [ "$GCHAT_COUNT" -gt 0 ]; then
+        if [ ! -f "$FLAG_GCHAT" ]; then touch "$FLAG_GCHAT"; fi
+        GCHAT_MINS=$(( ($(date +%s) - $(stat -f %m "$FLAG_GCHAT")) / 60 ))
+        if [ "$GCHAT_MINS" -ge "$GCHAT_THRESHOLD" ]; then GCHAT_OUT="CRITICAL|$GCHAT_COUNT"; else GCHAT_OUT="PENDING|$GCHAT_COUNT"; fi
+    else
+        rm -f "$FLAG_GCHAT"
+        GCHAT_OUT="NONE"
+    fi
 else
-    GCHAT_COUNT=$(lsappinfo info -only StatusLabel "$GCHAT_PID" | grep -oE '[0-9]+' || echo "0")
-fi
-if [ "$GCHAT_COUNT" -gt 0 ]; then
-    if [ ! -f "$FLAG_GCHAT" ]; then touch "$FLAG_GCHAT"; fi
-    GCHAT_MINS=$(( ($(date +%s) - $(stat -f %m "$FLAG_GCHAT")) / 60 ))
-    if [ "$GCHAT_MINS" -ge "$GCHAT_THRESHOLD" ]; then GCHAT_OUT="CRITICAL|$GCHAT_COUNT"; else GCHAT_OUT="PENDING|$GCHAT_COUNT"; fi
-else
-    rm -f "$FLAG_GCHAT"
     GCHAT_OUT="NONE"
 fi
 
 # 5. SENSOR DE SLACK
-SLACK_PID=$(lsappinfo find name=Slack 2>/dev/null)
-if [ -z "$SLACK_PID" ]; then
-    SLACK_COUNT=0
+if [ "$SENSOR_SLACK" = "true" ]; then
+    SLACK_PID=$(lsappinfo find name=Slack 2>/dev/null)
+    if [ -z "$SLACK_PID" ]; then
+        SLACK_COUNT=0
+    else
+        SLACK_COUNT=$(lsappinfo info -only StatusLabel "$SLACK_PID" | grep -oE '[0-9]+' || echo "0")
+    fi
+    if [ "$SLACK_COUNT" -gt 0 ]; then
+        if [ ! -f "$FLAG_SLACK" ]; then touch "$FLAG_SLACK"; fi
+        SLACK_MINS=$(( ($(date +%s) - $(stat -f %m "$FLAG_SLACK")) / 60 ))
+        if [ "$SLACK_MINS" -ge "$SLACK_THRESHOLD" ]; then SLACK_OUT="CRITICAL|$SLACK_COUNT"; else SLACK_OUT="PENDING|$SLACK_COUNT"; fi
+    else
+        rm -f "$FLAG_SLACK"
+        SLACK_OUT="NONE"
+    fi
 else
-    SLACK_COUNT=$(lsappinfo info -only StatusLabel "$SLACK_PID" | grep -oE '[0-9]+' || echo "0")
-fi
-if [ "$SLACK_COUNT" -gt 0 ]; then
-    if [ ! -f "$FLAG_SLACK" ]; then touch "$FLAG_SLACK"; fi
-    SLACK_MINS=$(( ($(date +%s) - $(stat -f %m "$FLAG_SLACK")) / 60 ))
-    if [ "$SLACK_MINS" -ge "$SLACK_THRESHOLD" ]; then SLACK_OUT="CRITICAL|$SLACK_COUNT"; else SLACK_OUT="PENDING|$SLACK_COUNT"; fi
-else
-    rm -f "$FLAG_SLACK"
     SLACK_OUT="NONE"
 fi
 
 # 6. BREAK REMINDER (2 horas de focus continuo)
-IDLE_SECS=$(ioreg -c IOHIDSystem -d 4 | awk '/HIDIdleTime/{print int($NF/1000000000); exit}' 2>/dev/null || echo "0")
-if [ "$IDLE_SECS" -ge "$IDLE_THRESHOLD" ] && [ "$MEET_OUT" != "ALIVE" ]; then
-    touch "$FLAG_BREAK"
+if [ "$SENSOR_BREAK" = "true" ]; then
+    IDLE_SECS=$(ioreg -c IOHIDSystem -d 4 | awk '/HIDIdleTime/{print int($NF/1000000000); exit}' 2>/dev/null || echo "0")
+    if [ "$IDLE_SECS" -ge "$IDLE_THRESHOLD" ] && [ "$MEET_OUT" != "ALIVE" ]; then
+        touch "$FLAG_BREAK"
+    fi
+    if [ ! -f "$FLAG_BREAK" ]; then touch "$FLAG_BREAK"; fi
+    BREAK_MINS=$(( ($(date +%s) - $(stat -f %m "$FLAG_BREAK")) / 60 ))
+    if [ "$BREAK_MINS" -ge "$BREAK_THRESHOLD" ]; then BREAK_OUT="BREAK|$BREAK_MINS"; else BREAK_OUT="NONE"; fi
+else
+    BREAK_OUT="NONE"
 fi
-if [ ! -f "$FLAG_BREAK" ]; then touch "$FLAG_BREAK"; fi
-BREAK_MINS=$(( ($(date +%s) - $(stat -f %m "$FLAG_BREAK")) / 60 ))
-if [ "$BREAK_MINS" -ge "$BREAK_THRESHOLD" ]; then BREAK_OUT="BREAK|$BREAK_MINS"; else BREAK_OUT="NONE"; fi
 
-echo "$MEET_OUT#$SLACK_OUT#$WA_OUT#$GCHAT_OUT#$KID1_OUT#$KID2_OUT#$BREAK_OUT"
+echo "$MEET_OUT#$SLACK_OUT#$WA_OUT#$GCHAT_OUT#$KIDS_OUT#$BREAK_OUT"
 `;
 
 export const refreshFrequency = 12000;
@@ -115,8 +121,9 @@ const KIDS = [
 export const render = ({ output, error }) => {
   if (error || !output) return null;
   const parts = output.trim().split('#');
-  if (parts.length < 7) return null;
-  const [meetData, slackData, waData, gchatData, kid1Data, kid2Data, breakData] = parts;
+  if (parts.length < 6) return null;
+  const [meetData, slackData, waData, gchatData, kidsRaw, breakData] = parts;
+  const kidsData = kidsRaw ? kidsRaw.split('~') : [];
 
   const getMeetConfig = () => {
     if (meetData === "NONE") return null;
@@ -220,11 +227,10 @@ export const render = ({ output, error }) => {
   const slack = getSlackConfig();
   const wa    = getWaConfig();
   const gchat = getGchatConfig();
-  const kid1  = getKidConfig(kid1Data, KIDS[0]);
-  const kid2  = getKidConfig(kid2Data, KIDS[1]);
+  const kids  = kidsData.map((d, i) => getKidConfig(d, KIDS[i] || { icon: "👶", fallbackName: `Hijo ${i + 1}` })).filter(Boolean);
   const brk   = getBreakConfig();
 
-  if (!meet && !slack && !wa && !gchat && !kid1 && !kid2 && !brk) return null;
+  if (!meet && !slack && !wa && !gchat && !kids.length && !brk) return null;
 
   const Card = ({ cfg, onClick }) => (
     <div
@@ -286,8 +292,7 @@ export const render = ({ output, error }) => {
       {slack && <Card cfg={slack} onClick={() => run('open -a Slack')} />}
       {wa    && <Card cfg={wa}    onClick={() => run('open -a WhatsApp')} />}
       {gchat && <Card cfg={gchat} onClick={() => run('open -a "Google Chat"')} />}
-      {kid1  && <Card cfg={kid1}  onClick={() => run('open -a Beeper')} />}
-      {kid2  && <Card cfg={kid2}  onClick={() => run('open -a Beeper')} />}
+      {kids.map((k, i) => <Card key={i} cfg={k} onClick={() => run('open -a "Beeper Desktop"')} />)}
       {brk   && <Card cfg={brk}   onClick={() => run('touch /tmp/break_timer')} />}
     </div>
   );
