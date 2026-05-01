@@ -2,8 +2,8 @@
 import { run } from 'uebersicht';
 
 export const command = `
-WIDGET="$HOME/Library/Application Support/Übersicht/widgets/MeetingBeacon.widget"
-source "$WIDGET/config.sh"
+CFG="$HOME/.config/meetingbeacon"
+source "$CFG/config.sh"
 
 FLAG_SLACK="/tmp/slack_timer"
 FLAG_WA="/tmp/wa_timer"
@@ -15,7 +15,7 @@ if [ "$SENSOR_MEET" = "true" ]; then
     if pmset -g assertions | grep -i "Google Chrome" | grep -i "WebRTC" > /dev/null; then
         MEET_OUT="ALIVE"
     else
-        MEET_OUT=$(timeout 8 /opt/homebrew/bin/icalBuddy -eep "notes,attendees,location,url" -ea -nc -b ">>>" -ec "$CAL_EXCLUDE" eventsFrom:today to:tomorrow 2>/dev/null | timeout 4 python3 "$WIDGET/check_calendar.py" 2>/dev/null || echo "NONE")
+        MEET_OUT=$(/opt/homebrew/bin/icalBuddy -eep "notes,attendees,location,url" -ea -nc -b ">>>" -ec "$CAL_EXCLUDE" eventsFrom:today to:tomorrow 2>/dev/null | python3 "$CFG/check_calendar.py" 2>/dev/null || echo "NONE")
         [ -z "$MEET_OUT" ] && MEET_OUT="NONE"
     fi
 else
@@ -24,7 +24,7 @@ fi
 
 # 2. SENSOR DE CHICOS (Beeper - Google Chat personal)
 if [ "$SENSOR_KIDS" = "true" ] && [ -n "$KIDS_IDS" ]; then
-    KIDS_OUT=$(python3 "$WIDGET/check_kids.py" "$KIDS_IDS" "$KIDS_THRESHOLD" 2>/dev/null || echo "NONE")
+    KIDS_OUT=$(python3 "$CFG/check_kids.py" "$KIDS_IDS" "$KIDS_THRESHOLD" 2>/dev/null || echo "NONE")
 else
     KIDS_OUT="NONE"
 fi
@@ -90,7 +90,9 @@ fi
 # 6. BREAK REMINDER (2 horas de focus continuo)
 if [ "$SENSOR_BREAK" = "true" ]; then
     IDLE_SECS=$(ioreg -c IOHIDSystem -d 4 | awk '/HIDIdleTime/{print int($NF/1000000000); exit}' 2>/dev/null || echo "0")
-    if [ "$IDLE_SECS" -ge "$IDLE_THRESHOLD" ] && [ "$MEET_OUT" != "ALIVE" ]; then
+    PREV_IDLE=$(cat /tmp/break_prev_idle 2>/dev/null || echo "0")
+    echo "$IDLE_SECS" > /tmp/break_prev_idle
+    if [ "$IDLE_SECS" -ge "$IDLE_THRESHOLD" ] || [ "$PREV_IDLE" -ge "$IDLE_THRESHOLD" ]; then
         touch "$FLAG_BREAK"
     fi
     if [ ! -f "$FLAG_BREAK" ]; then touch "$FLAG_BREAK"; fi
