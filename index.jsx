@@ -267,10 +267,21 @@ export const render = ({ output, error }) => {
     </div>
   );
 
+  const allCards = [];
+  if (meet)  allCards.push({ cfg: meet,  onClick: () => run('open -a "Google Meet"') });
+  if (slack) allCards.push({ cfg: slack, onClick: () => run('open -a Slack') });
+  if (wa)    allCards.push({ cfg: wa,    onClick: () => run('open -a WhatsApp') });
+  if (gchat) allCards.push({ cfg: gchat, onClick: () => run('open -a "Google Chat"') });
+  kids.forEach(k => allCards.push({ cfg: k, onClick: () => run('open -a "Beeper Desktop"') }));
+  if (brk)   allCards.push({ cfg: brk,  onClick: () => run('touch /tmp/break_timer') });
+
+  const rows = [];
+  for (let i = 0; i < allCards.length; i += 3) rows.push(allCards.slice(i, i + 3));
+
   return (
     <div style={{
-      position: "absolute", top: "40vh", left: "50vw", transform: "translate(-50%, -50%)",
-      display: "flex", gap: "50px", alignItems: "center", justifyContent: "center",
+      position: "absolute", top: "50vh", left: "50vw", transform: "translate(-50%, -50%)",
+      display: "flex", flexDirection: "column", gap: "30px", alignItems: "center",
       fontFamily: "-apple-system, system-ui"
     }}>
       <style>{`
@@ -290,12 +301,11 @@ export const render = ({ output, error }) => {
         }
       `}</style>
 
-      {meet  && <Card cfg={meet}  onClick={() => run('open -a "Google Meet"')} />}
-      {slack && <Card cfg={slack} onClick={() => run('open -a Slack')} />}
-      {wa    && <Card cfg={wa}    onClick={() => run('open -a WhatsApp')} />}
-      {gchat && <Card cfg={gchat} onClick={() => run('open -a "Google Chat"')} />}
-      {kids.map((k, i) => <Card key={i} cfg={k} onClick={() => run('open -a "Beeper Desktop"')} />)}
-      {brk   && <Card cfg={brk}   onClick={() => run('touch /tmp/break_timer')} />}
+      {rows.map((row, ri) => (
+        <div key={ri} style={{ display: "flex", gap: "30px", justifyContent: "center" }}>
+          {row.map((card, ci) => <Card key={ci} cfg={card.cfg} onClick={card.onClick} />)}
+        </div>
+      ))}
     </div>
   );
 };
