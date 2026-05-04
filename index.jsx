@@ -137,7 +137,7 @@ export const render = ({ output, error }) => {
     if (status === "SOON") {
       const urgent = m <= 1;
       return {
-        color: urgent ? "#FF1111" : "#FFDB15",
+        color: urgent ? "#FF1111" : "#4FC3F7",
         icon: "👥", icon2: urgent ? "🚨" : "⌛",
         label: urgent ? "¡AHORA!" : "EN " + m + "m",
         sub: title || null,
@@ -174,7 +174,7 @@ export const render = ({ output, error }) => {
     const [status, count] = waData.split('|');
     const isRed = status === "CRITICAL";
     return {
-      color: isRed ? "#FF1111" : "#25D366",
+      color: isRed ? "#FF1111" : "#2196F3",
       icon: WA_CONFIG.icon, icon2: isRed ? WA_CONFIG.iconCritical : WA_CONFIG.iconPending,
       label: WA_CONFIG.label,
       sub: count + " msg",
@@ -187,7 +187,7 @@ export const render = ({ output, error }) => {
     const [status, count] = gchatData.split('|');
     const isRed = status === "CRITICAL";
     return {
-      color: isRed ? "#FF1111" : "#1A73E8",
+      color: isRed ? "#FF1111" : "#90A4AE",
       icon: "🗨️", icon2: isRed ? "🚨" : "📨",
       label: "G·CHAT",
       sub: count + " msg",
@@ -200,7 +200,7 @@ export const render = ({ output, error }) => {
     const [status, count, name] = data.split('|');
     const isRed = status === "CRITICAL";
     return {
-      color: isRed ? "#FF1111" : "#A78BFA",
+      color: isRed ? "#FF1111" : "#2196F3",
       icon,
       icon2: isRed ? "🚨" : undefined,
       label: name || fallbackName,
@@ -216,7 +216,7 @@ export const render = ({ output, error }) => {
     const m = parseInt(mins) % 60;
     const elapsed = h > 0 ? `${h}h ${m}m` : `${m}m`;
     return {
-      color: "#4FC3F7",
+      color: "#80CBC4",
       icon: "☕", icon2: "🧠",
       label: "DESCANSA",
       sub: elapsed + " en foco",
