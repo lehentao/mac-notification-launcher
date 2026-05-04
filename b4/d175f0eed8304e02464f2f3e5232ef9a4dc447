@@ -1,0 +1,23 @@
+index.jsx
+  bd0337c0160c06da 105-123,144-145,230-241,264,266,307-308
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "b4d175f0eed8304e02464f2f3e5232ef9a4dc447",
+  "prompts": {
+    "bd0337c0160c06da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "05b6fcba-8d69-4c31-9bd8-d3dfbec489a1",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Gonzalo Richiardi",
+      "messages": [],
+      "total_additions": 40,
+      "total_deletions": 8,
+      "accepted_lines": 37,
+      "overriden_lines": 0
+    }
+  }
+}
