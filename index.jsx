@@ -1,4 +1,4 @@
-// MeetingBeacon.widget/index.jsx
+// mac-notification-launcher.widget/index.jsx
 import { run } from 'uebersicht';
 
 export const command = `
