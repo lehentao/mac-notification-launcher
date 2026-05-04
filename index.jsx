@@ -129,7 +129,7 @@ export const render = ({ output, error }) => {
 
   const getMeetConfig = () => {
     if (meetData === "NONE") return null;
-    if (meetData === "ALIVE") return { color: "#00A650", icon: "👥", icon2: "🎙️", label: "EN REUNIÓN", anim: "pulse 2s infinite" };
+    if (meetData === "ALIVE") return { color: "#00A650", icon: "💼", icon2: "🎙️", label: "EN REUNIÓN", anim: "pulse 2s infinite" };
 
     const [status, mins, title] = meetData.split('|');
     const m = parseInt(mins);
@@ -138,7 +138,7 @@ export const render = ({ output, error }) => {
       const urgent = m <= 1;
       return {
         color: urgent ? "#FF1111" : "#4FC3F7",
-        icon: "👥", icon2: urgent ? "🚨" : "⌛",
+        icon: "💼", icon2: urgent ? "🚨" : "⌛",
         label: urgent ? "¡AHORA!" : "EN " + m + "m",
         sub: title || null,
         anim: urgent ? "shake 0.5s infinite" : "float 3s infinite"
@@ -147,7 +147,7 @@ export const render = ({ output, error }) => {
     if (status === "LATE") {
       return {
         color: "#FF1111",
-        icon: "👥", icon2: "🚨",
+        icon: "💼", icon2: "🚨",
         label: "TARDE " + m + "m",
         sub: title || null,
         anim: "shake 0.5s infinite"
