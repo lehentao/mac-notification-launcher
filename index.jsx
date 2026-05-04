@@ -102,7 +102,25 @@ else
     BREAK_OUT="NONE"
 fi
 
-echo "$MEET_OUT#$SLACK_OUT#$WA_OUT#$GCHAT_OUT#$KIDS_OUT#$BREAK_OUT"
+# 7. HIDRATACIÓN
+FLAG_HYDRA="/tmp/hydra_timer"
+if [ "$SENSOR_HYDRA" = "true" ]; then
+    if [ "$IDLE_SECS" -ge "$IDLE_THRESHOLD" ] || [ "$PREV_IDLE" -ge "$IDLE_THRESHOLD" ]; then
+        touch "$FLAG_HYDRA"
+    fi
+    if [ ! -f "$FLAG_HYDRA" ]; then touch "$FLAG_HYDRA"; fi
+    HYDRA_MINS=$(( ($(date +%s) - $(stat -f %m "$FLAG_HYDRA")) / 60 ))
+    HOUR=$(date +%H)
+    if [ "$HYDRA_MINS" -ge "$HYDRA_THRESHOLD" ] && [ "$HOUR" -ge 8 ] && [ "$HOUR" -lt 19 ]; then
+        HYDRA_OUT="REMIND|$HYDRA_MINS"
+    else
+        HYDRA_OUT="NONE"
+    fi
+else
+    HYDRA_OUT="NONE"
+fi
+
+echo "$MEET_OUT#$SLACK_OUT#$WA_OUT#$GCHAT_OUT#$KIDS_OUT#$BREAK_OUT#$HYDRA_OUT"
 `;
 
 export const refreshFrequency = 12000;
@@ -123,8 +141,8 @@ const KIDS = [
 export const render = ({ output, error }) => {
   if (error || !output) return null;
   const parts = output.trim().split('#');
-  if (parts.length < 6) return null;
-  const [meetData, slackData, waData, gchatData, kidsRaw, breakData] = parts;
+  if (parts.length < 7) return null;
+  const [meetData, slackData, waData, gchatData, kidsRaw, breakData, hydraData] = parts;
   const kidsData = kidsRaw ? kidsRaw.split('~') : [];
 
   const getMeetConfig = () => {
@@ -209,6 +227,18 @@ export const render = ({ output, error }) => {
     };
   };
 
+  const getHydraConfig = () => {
+    if (hydraData === "NONE") return null;
+    return {
+      color: "#29B6F6",
+      icon: "🥤", icon2: "💦",
+      label: "HIDRATATE",
+      sub: "ya van 2h sin agua",
+      anim: "float 3s infinite",
+      clickable: true
+    };
+  };
+
   const getBreakConfig = () => {
     if (breakData === "NONE" || meetData === "ALIVE") return null;
     const [, mins] = breakData.split('|');
@@ -231,8 +261,9 @@ export const render = ({ output, error }) => {
   const gchat = getGchatConfig();
   const kids  = kidsData.map((d, i) => getKidConfig(d, KIDS[i] || { icon: "👶", fallbackName: `Hijo ${i + 1}` })).filter(Boolean);
   const brk   = getBreakConfig();
+  const hydra = getHydraConfig();
 
-  if (!meet && !slack && !wa && !gchat && !kids.length && !brk) return null;
+  if (!meet && !slack && !wa && !gchat && !kids.length && !brk && !hydra) return null;
 
   const Card = ({ cfg, onClick }) => (
     <div
@@ -273,7 +304,8 @@ export const render = ({ output, error }) => {
   if (wa)    allCards.push({ cfg: wa,    onClick: () => run('open -a WhatsApp') });
   if (gchat) allCards.push({ cfg: gchat, onClick: () => run('open -a "Google Chat"') });
   kids.forEach(k => allCards.push({ cfg: k, onClick: () => run('open -a "Beeper Desktop"') }));
-  if (brk)   allCards.push({ cfg: brk,  onClick: () => run('touch /tmp/break_timer') });
+  if (brk)   allCards.push({ cfg: brk,   onClick: () => run('touch /tmp/break_timer') });
+  if (hydra) allCards.push({ cfg: hydra, onClick: () => run('touch /tmp/hydra_timer') });
 
   const rows = [];
   for (let i = 0; i < allCards.length; i += 3) rows.push(allCards.slice(i, i + 3));
