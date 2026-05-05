@@ -105,9 +105,6 @@ fi
 # 7. HIDRATACIÓN
 FLAG_HYDRA="/tmp/hydra_timer"
 if [ "$SENSOR_HYDRA" = "true" ]; then
-    if [ "$IDLE_SECS" -ge "$IDLE_THRESHOLD" ] || [ "$PREV_IDLE" -ge "$IDLE_THRESHOLD" ]; then
-        touch "$FLAG_HYDRA"
-    fi
     if [ ! -f "$FLAG_HYDRA" ]; then touch "$FLAG_HYDRA"; fi
     HYDRA_MINS=$(( ($(date +%s) - $(stat -f %m "$FLAG_HYDRA")) / 60 ))
     HOUR=$(date +%H)
@@ -153,7 +150,7 @@ export const render = ({ output, error }) => {
     const m = parseInt(mins);
 
     if (status === "SOON") {
-      const urgent = m <= 1;
+      const urgent = m <= 0;
       return {
         color: urgent ? "#FF1111" : "#4FC3F7",
         icon: "💼", icon2: urgent ? "🚨" : "⌛",
