@@ -117,6 +117,20 @@ else
     HYDRA_OUT="NONE"
 fi
 
+
+# SwiftBar integration
+if [ "$SWIFTBAR_ALERTS" = "true" ]; then
+    ICONS=""
+    [ "$MEET_OUT"  != "NONE" ] && ICONS="${ICONS}💼"
+    [ "$SLACK_OUT" != "NONE" ] && ICONS="${ICONS}💬"
+    [ "$WA_OUT"    != "NONE" ] && ICONS="${ICONS}👸"
+    [ "$GCHAT_OUT" != "NONE" ] && ICONS="${ICONS}🗨️"
+    [ "$KIDS_OUT"  != "NONE" ] && ICONS="${ICONS}👦"
+    [ "$BREAK_OUT" != "NONE" ] && ICONS="${ICONS}☕"
+    [ "$HYDRA_OUT" != "NONE" ] && ICONS="${ICONS}🥤"
+    echo "$ICONS" > /tmp/ubersicht_alerts
+fi
+
 echo "$MEET_OUT#$SLACK_OUT#$WA_OUT#$GCHAT_OUT#$KIDS_OUT#$BREAK_OUT#$HYDRA_OUT"
 `;
 
@@ -268,10 +282,11 @@ export const render = ({ output, error }) => {
       style={{
         display: "flex", flexDirection: "column", alignItems: "center",
         animation: cfg.anim, width: "180px",
-        backgroundColor: "rgba(0,0,0,0.75)", borderRadius: "24px", padding: "20px 16px 16px",
+        background: "linear-gradient(135deg, " + cfg.color + "55, rgba(20,20,24,0.97))",
+        borderRadius: "24px", padding: "20px 16px 16px",
         backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-        border: "1px solid rgba(255,255,255,0.12)",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 0 40px " + cfg.color + "30",
+        border: "1.5px solid " + cfg.color + "99",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.7), 0 0 30px 8px " + cfg.color + "55",
         cursor: onClick ? "pointer" : "default"
       }}>
       <div style={{

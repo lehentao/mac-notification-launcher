@@ -33,3 +33,10 @@ IDLE_THRESHOLD=300      # segundos de inactividad para resetear
 
 # Calendario — calendarios a excluir
 CAL_EXCLUDE="Nombre de tu calendario a excluir"
+
+# Hidratación
+SENSOR_HYDRA=true
+HYDRA_THRESHOLD=120     # minutos entre recordatorios
+
+# SwiftBar — muestra íconos de alertas activas en la barra de menús
+SWIFTBAR_ALERTS=true

@@ -26,6 +26,7 @@ Floating cards appear on your desktop only when something needs your attention. 
 - **Slack** — desktop app
 - **Google Chat** — installed as PWA from Chrome
 - **Beeper Desktop** — for personal Google Chat contacts (optional)
+- [SwiftBar](https://swiftbar.app/) — for menu bar integration (optional)
 
 ---
 
@@ -160,9 +161,36 @@ HYDRA_THRESHOLD=120
 
 # Calendar — name of calendar to exclude (e.g. out-of-office)
 CAL_EXCLUDE="Name of your calendar"
+
+# SwiftBar — show active alert icons in the menu bar (requires SwiftBar)
+SWIFTBAR_ALERTS=true
 ```
 
 To customize icons and labels for WhatsApp and kids, edit `WA_CONFIG` and `KIDS` at the top of `index.jsx`.
+
+---
+
+## SwiftBar integration
+
+When all your screens are covered with apps, the desktop widget is hidden behind windows. The optional SwiftBar integration solves this by showing active alert icons directly in the macOS menu bar — always visible regardless of what's open.
+
+**How it works:** the widget writes active sensor icons to `/tmp/ubersicht_alerts` on every refresh cycle. A SwiftBar plugin reads that file every 5 seconds and displays the icons in the menu bar. When everything is clear, the menu bar item disappears.
+
+**Setup:**
+
+1. Install [SwiftBar](https://swiftbar.app/) and configure a plugins folder
+2. Copy the plugin into your SwiftBar plugins folder:
+```bash
+cp ubersicht-alerts.5s.sh /path/to/your/swiftbar/plugins/
+chmod +x /path/to/your/swiftbar/plugins/ubersicht-alerts.5s.sh
+```
+3. Enable it in your config:
+```bash
+SWIFTBAR_ALERTS=true
+```
+4. Refresh SwiftBar — it will start polling automatically
+
+The plugin file is included in this repo at `ubersicht-alerts.5s.sh`.
 
 ---
 
