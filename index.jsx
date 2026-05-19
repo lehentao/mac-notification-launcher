@@ -15,7 +15,7 @@ if [ "$SENSOR_MEET" = "true" ]; then
     if pmset -g assertions | grep -i "Google Chrome" | grep -i "WebRTC" > /dev/null; then
         MEET_OUT="ALIVE"
     else
-        MEET_OUT=$(/opt/homebrew/bin/icalBuddy -eep "notes,attendees,location,url" -ea -nc -b ">>>" -ec "$CAL_EXCLUDE" eventsFrom:today to:tomorrow 2>/dev/null | python3 "$CFG/check_calendar.py" 2>/dev/null || echo "NONE")
+        MEET_OUT=$(python3 "$CFG/check_calendar.py" "$CAL_EXCLUDE" 2>/dev/null || echo "NONE")
         [ -z "$MEET_OUT" ] && MEET_OUT="NONE"
     fi
 else
@@ -118,20 +118,8 @@ else
 fi
 
 
-# SwiftBar integration
-if [ "$SWIFTBAR_ALERTS" = "true" ]; then
-    ICONS=""
-    [ "$MEET_OUT"  != "NONE" ] && ICONS="${ICONS}💼"
-    [ "$SLACK_OUT" != "NONE" ] && ICONS="${ICONS}💬"
-    [ "$WA_OUT"    != "NONE" ] && ICONS="${ICONS}👸"
-    [ "$GCHAT_OUT" != "NONE" ] && ICONS="${ICONS}🗨️"
-    [ "$KIDS_OUT"  != "NONE" ] && ICONS="${ICONS}👦"
-    [ "$BREAK_OUT" != "NONE" ] && ICONS="${ICONS}☕"
-    [ "$HYDRA_OUT" != "NONE" ] && ICONS="${ICONS}🥤"
-    echo "$ICONS" > /tmp/ubersicht_alerts
-fi
 
-echo "$MEET_OUT#$SLACK_OUT#$WA_OUT#$GCHAT_OUT#$KIDS_OUT#$BREAK_OUT#$HYDRA_OUT"
+echo "$MEET_OUT#$SLACK_OUT#$WA_OUT#$GCHAT_OUT#$KIDS_OUT#$BREAK_OUT#$HYDRA_OUT#$SWIFTBAR_ALERTS"
 `;
 
 export const refreshFrequency = 12000;
@@ -153,7 +141,7 @@ export const render = ({ output, error }) => {
   if (error || !output) return null;
   const parts = output.trim().split('#');
   if (parts.length < 7) return null;
-  const [meetData, slackData, waData, gchatData, kidsRaw, breakData, hydraData] = parts;
+  const [meetData, slackData, waData, gchatData, kidsRaw, breakData, hydraData, swiftbarAlerts] = parts;
   const kidsData = kidsRaw ? kidsRaw.split('~') : [];
 
   const getMeetConfig = () => {
@@ -186,7 +174,7 @@ export const render = ({ output, error }) => {
   };
 
   const getSlackConfig = () => {
-    if (slackData === "NONE" || meetData === "ALIVE") return null;
+    if (slackData === "NONE") return null;
     const [status, count] = slackData.split('|');
     const isRed = status === "CRITICAL";
     return {
@@ -212,7 +200,7 @@ export const render = ({ output, error }) => {
   };
 
   const getGchatConfig = () => {
-    if (gchatData === "NONE" || meetData === "ALIVE") return null;
+    if (gchatData === "NONE") return null;
     const [status, count] = gchatData.split('|');
     const isRed = status === "CRITICAL";
     return {
@@ -273,6 +261,17 @@ export const render = ({ output, error }) => {
   const kids  = kidsData.map((d, i) => getKidConfig(d, KIDS[i] || { icon: "👶", fallbackName: `Hijo ${i + 1}` })).filter(Boolean);
   const brk   = getBreakConfig();
   const hydra = getHydraConfig();
+
+  const swiftIcons = [
+    meet             ? '💼' : '',
+    slack            ? '💬' : '',
+    wa               ? '👸' : '',
+    gchat            ? '🗨️' : '',
+    kids.length > 0  ? '👦' : '',
+    brk              ? '☕' : '',
+    hydra            ? '🥤' : '',
+  ].filter(Boolean).join('');
+  if (swiftbarAlerts === 'true') run(`echo "${swiftIcons}" > /tmp/ubersicht_alerts`);
 
   if (!meet && !slack && !wa && !gchat && !kids.length && !brk && !hydra) return null;
 
